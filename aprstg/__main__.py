@@ -3,11 +3,14 @@ import aprs
 import telegram
 import os
 import sys, traceback
+import random 
 
 def receive(message):
     try:
         print(message)
         from_call = str(message.source)
+        if ":ack" in message.info.data.decode('ascii'):
+            return
         aprs_message = message.info.data.decode('ascii').split(":",2)[2]
         ack = False
         if "{" in aprs_message:
@@ -20,22 +23,24 @@ def receive(message):
         tg_message = "[" + from_call + "] : " + message
         if dest[0] != "@":
             dest = "@" + dest
+        from_call = from_call.ljust(9)
 
         bot.send_message(chat_id=dest, text=tg_message)
         if ack:
             ack_message = "TGSRV>APRS,TCPIP*::"+from_call+":ack"+str(ack)
             aprsTCP.send(ack_message.encode("ascii"))
-            confirm_message = "TGSRV>APRS,TCPIP*::"+from_call+" :Sent to Telegram!"
-            aprsTCP.send(confirm_message.encode("ascii"))
+        confirm_message = "TGSRV>APRS,TCPIP*::"+from_call+":Sent to Telegram!{" +str(random.randint(0,99999))
+        aprsTCP.send(confirm_message.encode("ascii"))
         print(dest)
         print(tg_message)
     except:
+        traceback.print_exc(file=sys.stdout)
         try:
-            confirm_message = "TGSRV>APRS,TCPIP*::"+from_call+" :Error - is @aprsisbot in group?!"
+            from_call = from_call.ljust(9)
+            confirm_message = "TGSRV>APRS,TCPIP*::"+from_call+":Error - is @aprsisbot in group?!"
             aprsTCP.send(confirm_message.encode("ascii"))
         except:
             pass
-        traceback.print_exc(file=sys.stdout)    
 
 
 aprsTCP = aprs.TCP(os.environ['APRS_USER'].encode('utf-8'),os.environ['APRS_PASSCODE'].encode('utf-8'), aprs_filter='g/TGSRV')
